@@ -1,0 +1,228 @@
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+
+
+
+const int dim = 2;
+const double eps = 0.01;
+const double alpha = 1;
+const double beta = 0.5;
+const double Mygamma = 2;
+const int k = 3;
+
+struct Result
+{
+	double x1;
+	double x2;
+	double value;
+};
+
+vector<double> Sum_R2(vector<double> a, vector<double> b)
+{
+	if (a.size() == b.size() & a.size() != 0) 
+	{
+		vector<double> c(a.size());
+		for (int i = 0; i < a.size(); ++i)
+		{
+			c[i] = a[i] + b[i];
+		}
+		return c;
+	}
+	else
+	{
+		cout << "bad Sum_R2";
+		vector<double> c = { 999 };
+		return c;
+	}
+}
+
+vector<double> Multiply_R2(vector<double> a, double b)
+{
+	if (a.size() != 0)
+	{
+		vector<double> c(a.size());
+		for (int i = 0; i < a.size(); ++i)
+		{
+			c[i] = a[i] * b;
+		}
+		return c;
+	}
+	else
+	{
+		cout << "bad Multiply_R2";
+		vector<double> c = { 999 };
+		return c;
+	}
+}
+vector<double> Minus_R2(vector<double> a, vector<double> b)
+{
+	return Sum_R2(a, Multiply_R2(b, -1));
+}
+
+void Init_1(vector<vector<double>> & set) {
+	cout << endl << "enter starter coordinate x1: ";
+	double x1, x2;
+	cin >> x1;
+	set[0].push_back(x1);
+	cout << endl << "enter starter coordinate x2: ";
+	cin >> x2;
+	set[0].push_back(x2);
+
+	auto r = k*(sqrt(dim + 1) - 1 + dim) / dim / sqrt(2);
+	auto s = k*(sqrt(dim + 1) - 1) / dim / sqrt(2);
+
+	int q = 0;
+	for (int i = 1; i < dim + 1; ++i)
+	{
+		for (int j = 0; j < dim; ++j)
+		{
+			if (j == q)
+			{
+				set[i].push_back(set[0][j] + r);
+			}
+			else
+			{
+				set[i].push_back(set[0][j] + s);
+			}
+		}
+		++q;
+	}
+}
+
+void Init_2(vector<vector<double>> & set) {
+	cout << endl << "enter starter coordinate x1: ";
+	double x1, x2;
+	cin >> x1;
+	set[0].push_back(x1);
+	cout << endl << "enter starter coordinate x2: ";
+	cin >> x2;
+	set[0].push_back(x2);
+
+	int q = 0;
+	for (int i = 1; i < dim + 1; ++i)
+	{
+		for (int j = 0; j < dim; ++j)
+		{
+			if (j == q)
+			{
+				set[i].push_back(set[0][j] + k);
+			}
+			else
+			{
+				set[i].push_back(set[0][j]);
+			}
+		}
+		++q;
+	}
+
+
+}
+
+
+double f1(vector<double> x) {
+
+	return 100 * pow((x[1] - pow(x[0], 2)), 2) + 5 * pow((1 - x[0]), 2);
+}
+
+double f2(vector<double> x) {
+	return  pow((pow(x[0], 2) + x[1] - 11), 2) + pow((x[0] + pow(x[1], 2) - 7), 2);
+}
+
+double Sigma(vector<vector<double>> set, vector<double> x_c)
+{
+	double sum = 0;
+	for (int i = 0; i < set.size(); ++i)
+	{
+		sum += pow(f2(set[i]) - f2(x_c), 2);
+	}
+	return sqrt(sum / (dim + 1));
+}
+
+Result Polyhedron(vector <vector<double>> set)
+{
+
+	sort(set.begin(), set.end(), [](vector<double> i, vector<double> j) { return f2(i) < f2(j);  });
+
+	vector<double> sum = { 0, 0 };
+	for (int i = 0; i < set.size() - 1; ++i)  //  without x_h - worst vertex
+	{
+		sum = Sum_R2(sum, set[i]);
+	}
+
+	double t = 1.0 / dim;
+	auto x_c = Multiply_R2(sum, t);
+
+	auto sigma = Sigma(set, x_c);
+
+	Result result;
+	if (sigma <= eps)
+	{
+		result.x1 = set[0][0];   
+		result.x2 = set[0][1];
+		result.value = f2(set[0]);
+		return result;
+	}
+
+	if (sigma > eps)
+	{
+		auto x_l = set[0]; auto x_s = set[1]; auto x_h = set[2];
+		auto x_g = Sum_R2(x_c, Multiply_R2(Minus_R2(x_c, x_h), alpha));
+
+		if (f2(x_g) <= f2(x_l))
+		{
+			auto x_g_1 = Sum_R2(x_c, Multiply_R2(Minus_R2(x_g, x_c), Mygamma));
+
+			if (f2(x_g_1) < f2(x_l))
+			{
+				x_h = x_g_1;
+				set[0] = x_l; set[1] = x_s; set[2] = x_h;
+				return Polyhedron(set);
+			}
+			else
+			{
+				x_h = x_g;
+				set[0] = x_l; set[1] = x_s; set[2] = x_h;
+				return Polyhedron(set);
+			}
+		}
+
+		if ((f2(x_l) < f2(x_g)) & (f2(x_g) <= f2(x_s)))
+		{
+			x_h = x_g;
+			set[0] = x_l; set[1] = x_s; set[2] = x_h;
+			return Polyhedron(set);
+		}
+
+		if ((f2(x_s) < f2(x_g)) & (f2(x_g) <= f2(x_h)))
+		{
+			auto x_r = Sum_R2(x_c, Multiply_R2(Minus_R2(x_h, x_c), beta));
+			x_h = x_r;
+			set[0] = x_l; set[1] = x_s; set[2] = x_h;
+			return Polyhedron(set);
+		}
+
+		if (f2(x_g) > f2(x_h))
+		{
+			x_l = Sum_R2(x_l, Multiply_R2(Minus_R2(x_l, x_l), 0.5));
+			x_s = Sum_R2(x_l, Multiply_R2(Minus_R2(x_s, x_l), 0.5));
+			x_h = Sum_R2(x_l, Multiply_R2(Minus_R2(x_h, x_l), 0.5));
+			set[0] = x_l; set[1] = x_s; set[2] = x_h;
+			return Polyhedron(set);
+		}
+	}
+
+}
+
+int main() {
+	vector<vector<double>> set(3); // start coordinate 
+	Init_2(set);
+	auto answer = Polyhedron(set);
+	cout << endl << "arg: (" << answer.x1 << " , " << answer.x2 << ")" << endl;
+	cout << "value: " << answer.value;
+	cin.get();
+	cin.get();
+}
