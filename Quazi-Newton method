@@ -1,0 +1,219 @@
+#include <vector>
+#include <iostream>
+#include <algorithm>
+#include <Eigen/Dense>
+using namespace std;
+using Eigen::MatrixXd;
+using Eigen::RowVectorXd;
+using Eigen::Vector3d;
+
+const int dim = 2;
+const double eps = 0.003;
+const double delt = 1.5*eps;
+const int k = 3;
+
+struct Result_R2
+{
+	double x1;
+	double x2;
+	double value;
+};
+
+struct Result_R1
+{
+	double x;
+	double value;
+};
+
+vector<double> Sum_R2(vector<double> a, vector<double> b)
+{
+	if (a.size() == b.size() & a.size() != 0)
+	{
+		vector<double> c(a.size());
+		for (int i = 0; i < a.size(); ++i)
+		{
+			c[i] = a[i] + b[i];
+		}
+		return c;
+	}
+	else
+	{
+		cout << "bad Sum_R2";
+		vector<double> c = { 999 };
+		return c;
+	}
+}
+vector<double> Multiply_R2(vector<double> a, double b)
+{
+	if (a.size() != 0)
+	{
+		vector<double> c(a.size());
+		for (int i = 0; i < a.size(); ++i)
+		{
+			c[i] = a[i] * b;
+		}
+		return c;
+	}
+	else
+	{
+		cout << "bad Multiply_R2";
+		vector<double> c = { 999 };
+		return c;
+	}
+}
+vector<double> Minus_R2(vector<double> a, vector<double> b)
+{
+	return Sum_R2(a, Multiply_R2(b, -1));
+}
+
+vector<double> MatrixVec_Mult_R2(MatrixXd Mat, vector<double> a)
+{
+	MatrixXd temp(2, 1);
+	temp(0, 0) = a[0];
+	temp(1, 0) = a[1];
+	MatrixXd preRes(2, 1); 
+
+	preRes = Mat*temp;
+
+	vector<double> res;
+	res.push_back(preRes(0, 0));
+	res.push_back(preRes(1, 0));
+
+	return res;
+}
+
+
+
+void Init(vector<double> & x0) {
+	cout << endl << "enter starter coordinate x1: ";
+	double x1, x2;
+	cin >> x1;
+	x0.push_back(x1);
+	cout << endl << "enter starter coordinate x2: ";
+	cin >> x2;
+	x0.push_back(x2);
+}
+
+/*double f1(vector<double> x) {
+
+	return 100 * pow((x[1] - pow(x[0], 2)), 2) + 5 * pow((1 - x[0]), 2);
+}*/
+
+double f2(vector<double> x) {
+return  pow((pow(x[0], 2) + x[1] - 11), 2) + pow((x[0] + pow(x[1], 2) - 7), 2);
+}
+
+/*vector<double> grad_f1(vector<double> x) {
+	vector<double> res;
+	res.push_back(-400 * (x[1] - pow(x[0], 2))*x[0] - 10 * (1 - x[0]));
+	res.push_back(200 * (x[1] - pow(x[0], 2)));
+	return res;
+}*/
+
+vector<double> grad_f2(vector<double> x) {
+	vector<double> res;
+	res.push_back(4 * (pow(x[0], 2) + x[1] - 11)*x[0] + 2 * (x[0] + pow(x[1], 2) - 7));
+	res.push_back(2 * (pow(x[0], 2) + x[1] - 11) + 4 * (x[0] + pow(x[1], 2) - 7)*x[1]);
+	return res;
+}
+
+/*double h1(vector<double> x, double alpha, MatrixXd H) {
+	return f1(Minus_R2(x, Multiply_R2(MatrixVec_Mult_R2(H, grad_f1(x)), alpha)));
+}*/
+
+double h2(vector<double> x, double alpha, MatrixXd H) {
+	return f2(Minus_R2(x, Multiply_R2(MatrixVec_Mult_R2(H, grad_f2(x)), alpha)));
+}
+
+double Norm_R2(vector<double> a) {
+	return sqrt(pow(a[0], 2) + pow(a[1], 2));
+}
+
+Result_R1 Dichotomy(vector<double> x_k, double a, double b, MatrixXd H) {
+	if ((b - a) / 2 <= eps) {
+		double x = (a + b) / 2;
+		Result_R1 result;
+		result.x = x;
+		result.value = h2(x_k, x, H);
+		return result;
+	}
+	else {
+		double x1 = (a + b - delt) / 2;
+		double x2 = (a + b + delt) / 2;
+		double f1 = h2(x_k, x1, H);
+		double f2 = h2(x_k, x2, H);
+		if (f1 <= f2) {
+			return Dichotomy(x_k, a, x2, H);
+		}
+		else {
+			return Dichotomy(x_k, x1, b, H);
+		}
+	}
+}
+
+double argmin(vector<double> x_k, double a, double b, MatrixXd H) {
+
+	Result_R1 res = Dichotomy(x_k, a, b, H);
+	return res.x;
+}
+
+MatrixXd vec2mat_R2(vector<double> a) {
+	MatrixXd res(2, 1);
+	res(0, 0) = a[0];
+	res(1, 0) = a[1];
+	return res;
+
+}
+
+Result_R2 Quasi_Newton(vector<double> x, MatrixXd H, int n) {
+
+	if (Norm_R2(grad_f2(x)) < eps) {
+		Result_R2 res;
+		res.x1 = x[0];
+		res.x2 = x[1];
+		res.value = f2(x);
+		return res;
+	}
+
+
+	if (Norm_R2(grad_f2(x)) >= eps) {
+		double alpha;
+		alpha = argmin(x, 0, 5, H);
+		vector <double> x_new;
+		MatrixXd H_new(2, 2);
+		x_new = Minus_R2(x, Multiply_R2(MatrixVec_Mult_R2(H, grad_f2(x)), alpha));
+		if ((n + 1) % dim == 0) {
+			H_new(0, 0) = 1;
+			H_new(0, 1) = 0;
+			H_new(1, 0) = 0;
+			H_new(1, 1) = 1;
+		}
+		if ((n + 1) % dim != 0) {
+			vector<double> d = Minus_R2(x_new, x);
+			vector<double> gamma = Minus_R2(grad_f2(x_new), grad_f2(x));
+			MatrixXd d_mat(2, 1); d_mat = vec2mat_R2(d);
+			MatrixXd gamma_mat(2, 1); gamma_mat = vec2mat_R2(gamma);
+
+			double coef = (((d_mat - H*gamma_mat).transpose())*gamma_mat)(0, 0);
+			H_new = H + (1.0 / coef)*(d_mat - H*gamma_mat)*((d_mat - H*gamma_mat).transpose());
+		}
+		return Quasi_Newton(x_new, H_new, n + 1);
+
+	}
+}
+
+int main() {
+	MatrixXd H0(2, 2);
+	H0(0, 0) = 1;
+	H0(0, 1) = 0;
+	H0(1, 0) = 0;
+	H0(1, 1) = 1;
+	vector<double> x0;
+	Init(x0);
+	Result_R2 res;
+	res = Quasi_Newton(x0, H0, 0);
+	cout << endl << "x1 = " << res.x1 << ", x2 = " << res.x2 << ", value = " << res.value;
+	cin.get();
+	cin.get();
+	return 0;
+}
