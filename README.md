@@ -9,6 +9,6 @@ I tested methods on two popular functions for testing - Rosenbrock and Himmelbla
 ![Screenshot](1200px-Himmelblau_function.svg.png)
 
 You can use it by yourself, because it works well, all you need to change functions to which you need. 
-Also you can write me with questions to my VK profile https://vk.com/nyshny or egor322129@yandex.ru
+Also you can write me with questions to my VK profile https://vk.com/nyshny or egor322129@gmail.com
 
 
