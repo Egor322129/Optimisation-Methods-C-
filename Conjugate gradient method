@@ -1,0 +1,179 @@
+#include <vector>
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+const int dim = 2;
+const double eps = 0.00001;
+const double delt = 1.5*eps;
+const int k = 3;
+
+struct Result_R2
+{
+	double x1;
+	double x2;
+	double value;
+};
+
+struct Result_R1
+{
+	double x;
+	double value;
+};
+
+vector<double> Sum_R2(vector<double> a, vector<double> b)
+{
+	if (a.size() == b.size() & a.size() != 0)
+	{
+		vector<double> c(a.size());
+		for (int i = 0; i < a.size(); ++i)
+		{
+			c[i] = a[i] + b[i];
+		}
+		return c;
+	}
+	else
+	{
+		cout << "bad Sum_R2";
+		vector<double> c = { 999 };
+		return c;
+	}
+}
+vector<double> Multiply_R2(vector<double> a, double b)
+{
+	if (a.size() != 0)
+	{
+		vector<double> c(a.size());
+		for (int i = 0; i < a.size(); ++i)
+		{
+			c[i] = a[i] * b;
+		}
+		return c;
+	}
+	else
+	{
+		cout << "bad Multiply_R2";
+		vector<double> c = { 999 };
+		return c;
+	}
+}
+vector<double> Minus_R2(vector<double> a, vector<double> b)
+{
+	return Sum_R2(a, Multiply_R2(b, -1));
+}
+
+void Init(vector<double> & x0) {
+	cout << endl << "enter starter coordinate x1: ";
+	double x1, x2;
+	cin >> x1;
+	x0.push_back(x1);
+	cout << endl << "enter starter coordinate x2: ";
+	cin >> x2;
+	x0.push_back(x2);
+}
+
+/*double f1(vector<double> x) {
+
+return 100 * pow((x[1] - pow(x[0], 2)), 2) + 5 * pow((1 - x[0]), 2);
+}*/
+
+double f2(vector<double> x) {
+	return  pow((pow(x[0], 2) + x[1] - 11), 2) + pow((x[0] + pow(x[1], 2) - 7), 2);
+}
+
+/*vector<double> grad_f1(vector<double> x) {
+vector<double> res;
+res.push_back(-400 * (x[1] - pow(x[0], 2))*x[0] - 10 * (1 - x[0]));
+res.push_back(200 * (x[1] - pow(x[0], 2)));
+return res;
+}*/
+
+vector<double> grad_f2(vector<double> x) {
+	vector<double> res;
+	res.push_back(4 * (pow(x[0], 2) + x[1] - 11)*x[0] + 2 * (x[0] + pow(x[1], 2) - 7));
+	res.push_back(2 * (pow(x[0], 2) + x[1] - 11) + 4 * (x[0] + pow(x[1], 2) - 7)*x[1]);
+	return res;
+}
+
+/*double h1(vector<double> x, double alpha, vector<double> p) {
+return f1(Sum_R2(x, Multiply_R2(p, alpha)));
+}*/
+
+double h2(vector<double> x, double alpha, vector<double> p) {
+	return f2(Sum_R2(x, Multiply_R2(p, alpha)));
+}
+
+double Norm_R2(vector<double> a) {
+	return sqrt(pow(a[0], 2) + pow(a[1], 2));
+}
+
+Result_R1 Dichotomy(vector<double> x_k, double a, double b, vector<double> p) {
+	if ((b - a) / 2 <= eps) {
+		double x = (a + b) / 2;
+		Result_R1 result;
+		result.x = x;
+		result.value = h2(x_k, x, p);
+		return result;
+	}
+	else {
+		double x1 = (a + b - delt) / 2;
+		double x2 = (a + b + delt) / 2;
+		double f1 = h2(x_k, x1, p);
+		double f2 = h2(x_k, x2, p);
+		if (f1 <= f2) {
+			return Dichotomy(x_k, a, x2, p);
+		}
+		else {
+			return Dichotomy(x_k, x1, b, p);
+		}
+	}
+}
+
+double argmin(vector<double> x_k, double a, double b, vector<double> p) {
+
+	Result_R1 res = Dichotomy(x_k, a, b, p);
+	return res.x;
+}
+
+Result_R2 Conjugate_Gradient_method(vector<double> x, vector<double> p, int n) {
+
+	if (Norm_R2(grad_f2(x)) < eps) {
+		Result_R2 res;
+		res.x1 = x[0];
+		res.x2 = x[1];
+		res.value = f2(x);
+		return res;
+	}
+
+
+	if (Norm_R2(grad_f2(x)) >= eps) {
+		double alpha;
+		alpha = argmin(x, 0, 5, p);
+		vector <double> x_new;
+		vector <double> p_new;
+		x_new = Sum_R2(x, Multiply_R2(p, alpha));
+		if ((n + 1) % dim == 0) {
+			p_new = Multiply_R2(grad_f2(x_new), -1);
+		}
+		if ((n + 1) % dim != 0) {
+			double beta;
+			beta = pow(Norm_R2(grad_f2(x_new)), 2) / pow(Norm_R2(grad_f2(x)), 2);
+			p_new = Sum_R2(Multiply_R2(grad_f2(x_new), -1), Multiply_R2(p, beta));
+		}
+		return Conjugate_Gradient_method(x_new, p_new, n + 1);
+	}
+}
+
+int main() {
+	vector<double> x0;
+	Init(x0);
+	Result_R2 res;
+	vector<double> p0 = Multiply_R2(grad_f2(x0), -1);
+	res = Conjugate_Gradient_method(x0, p0, 0);
+	cout << endl << "x1 = " << res.x1 << ", x2 = " << res.x2 << ", value = " << res.value;
+	cin.get();
+	cin.get();
+	return 0;
+
+
+}
